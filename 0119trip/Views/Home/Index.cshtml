@@ -1,8 +1,58 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
-}
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的旅程 - 記帳分帳</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="~/css/Index.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <header class="page-header">
+            <h1 class="page-title">記帳分帳列表</h1>
+            <button class="btn-create" onclick="createNewTrip()">
+                <i class="fa-solid fa-plus"></i> 建立新旅程
+            </button>
+        </header>
+
+        <div class="trip-grid" id="tripList">
+
+            <div class="trip-card" onclick="goToTrip('trip1')">
+                <div class="trip-info">
+                    <h3>台南兩日遊美食行程</h3>
+                    <div class="trip-meta">
+                        <span><i class="fa-regular fa-calendar"></i> 上次更新：2026/1/19 1:10 下午</span>
+                        <span><i class="fa-solid fa-user-group"></i> 3 人</span>
+                    </div>
+                </div>
+                <div class="trip-action">
+                    <span class="status-badge">進行中</span>
+                    <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                </div>
+            </div>
+
+            <div class="trip-card" onclick="goToTrip('trip2')">
+                <div class="trip-info">
+                    <h3>日本東京五天四夜</h3>
+                    <div class="trip-meta">
+                        <span><i class="fa-regular fa-calendar"></i> 上次更新：2025/12/25</span>
+                        <span><i class="fa-solid fa-user-group"></i> 4 人</span>
+                    </div>
+                </div>
+                <div class="trip-action">
+                    <span class="status-badge">已結算</span>
+                    <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="~/js/Index.js"></script>
+</body>
+</html>

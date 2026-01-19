@@ -1,0 +1,156 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旅程詳情 - 台南兩日遊</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="~/css/Detail.css">
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <span style="color:#ddd; border:1px dashed #ddd; padding:5px 10px; border-radius:4px;">[全站導覽列預留區]</span>
+    </nav>
+
+    <header class="page-header">
+        <div class="header-left">
+            <i class="fa-solid fa-arrow-left back-btn" onclick="location.href='index.html'" title="返回列表"></i>
+            <h1 class="page-title">台南兩日遊美食行程</h1>
+        </div>
+
+        <button class="top-add-btn" onclick="openExpenseModal()">
+            <i class="fa-solid fa-plus"></i> 記一筆
+        </button>
+    </header>
+
+    <div class="tabs">
+        <div class="tab-btn active" onclick="switchTab('group')">群組花費</div>
+        <div class="tab-btn" onclick="switchTab('personal')">個人花費</div>
+        <div class="tab-btn" onclick="switchTab('balance')">待收付款項</div>
+    </div>
+
+    <div id="tab-group" class="content-area active">
+        <div class="content-wrapper" id="group-content"></div>
+    </div>
+
+    <div id="tab-personal" class="content-area">
+        <div class="content-wrapper">
+            <div class="budget-box">
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="font-weight:bold; font-size:16px;">我的預算</span>
+                    <span id="budget-text" style="font-weight:bold; font-size:16px;"></span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="budget-bar"></div>
+                </div>
+                <button onclick="editMyBudget()" style="margin-top:15px; border:1px solid #cbd5e1; background:white; padding:8px 15px; border-radius:8px; cursor:pointer; color:#475569; font-size:14px; width:100%; transition:0.2s;">
+                    <i class="fa-solid fa-pen"></i> 修改預算
+                </button>
+            </div>
+            <h4 style="margin-bottom:15px; color:#475569; padding-left:5px;">我的相關支出</h4>
+            <div id="personal-list"></div>
+        </div>
+    </div>
+
+    <div id="tab-balance" class="content-area">
+        <div class="content-wrapper">
+            <h4 style="margin-bottom:15px; color:#475569; padding-left:5px;">待結清債務 (點擊操作)</h4>
+            <div id="balance-list"></div>
+
+            <hr style="margin: 30px 0; border: none; border-top: 1px dashed #cbd5e1;">
+
+            <h4 style="margin-bottom:15px; color:#94a3b8; padding-left:5px;">已結清紀錄 (點擊可取消)</h4>
+            <div id="settled-list"></div>
+        </div>
+    </div>
+
+    <div class="summary-header">
+        <div class="member-avatars">
+            <div class="avatar">蘇</div>
+            <div class="avatar">一</div>
+            <div class="avatar">二</div>
+            <div class="avatar add-member-btn">+</div>
+        </div>
+        <div class="trip-total">
+            <span>旅程總支出</span>
+            <strong>NT$ <span id="header-total">0</span></strong>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="expenseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modal-title-text">新增支出</div>
+                <button class="close-modal" onclick="closeModal('expenseModal')">&times;</button>
+            </div>
+
+            <div class="form-group"><label>日期</label><input type="date" id="m-date" class="form-control"></div>
+            <div class="form-group"><label>項目名稱</label><input type="text" id="m-name" class="form-control" placeholder="例如：晚餐"></div>
+            <div class="form-group">
+                <label>類別</label>
+                <select id="m-cat" class="form-control">
+                    <option value="食物">食物</option>
+                    <option value="住宿">住宿</option>
+                    <option value="交通">交通</option>
+                    <option value="娛樂">娛樂</option>
+                    <option value="購物">購物</option>
+                    <option value="轉帳/結清">轉帳/結清</option>
+                </select>
+            </div>
+            <div class="form-group"><label>付款人 (實際出錢)</label><div id="m-payer-list"></div></div>
+            <div class="total-info"><span>付款總額</span><span>NT$ <span id="pay-total-val">0</span></span></div>
+            <div class="form-group">
+                <label>參與分攤成員</label>
+                <div class="mode-switch">
+                    <button id="mode-avg" class="mode-btn active" onclick="changeSplitMode('avg')">平均分攤</button>
+                    <button id="mode-custom" class="mode-btn" onclick="changeSplitMode('custom')">自定義金額</button>
+                </div>
+                <div id="m-split-list"></div>
+            </div>
+            <div class="total-info blue"><span>分攤總額</span><span>NT$ <span id="split-total-val">0</span></span></div>
+            <button class="submit-btn" id="modal-submit-btn" onclick="saveExpense()">確認新增</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="settleModal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div class="modal-header" style="justify-content: center;">
+                <div class="modal-title">確認結清款項？</div>
+            </div>
+            <div style="font-size: 18px; margin-bottom: 25px; line-height: 1.6;">
+                <div id="settle-desc"></div>
+                <div style="font-size: 24px; font-weight: 800; color: var(--primary-mint); margin-top: 10px;" id="settle-amount"></div>
+            </div>
+            <div class="btn-group">
+                <button class="btn-cancel" onclick="closeModal('settleModal')">取消</button>
+                <button class="btn-settle" onclick="confirmSettle()">標示已收款</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="undoSettleModal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div class="modal-header" style="justify-content: center;">
+                <div class="modal-title" style="color:var(--danger)">取消結清？</div>
+            </div>
+            <div style="font-size: 16px; margin-bottom: 25px; color:#666;">
+                這筆還款紀錄將被刪除，債務將會恢復為「待結清」狀態。
+            </div>
+            <div class="btn-group">
+                <button class="btn-cancel" onclick="closeModal('undoSettleModal')">保留</button>
+                <button class="btn-delete" onclick="confirmUndoSettle()">確認取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/js/Detail.js"></script>
+</body>
+</html>

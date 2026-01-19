@@ -1,0 +1,175 @@
+﻿/* --- 1. 配色變數 --- */
+:root {
+    --primary-mint: #62DEB1;
+    --dark-mint: #36b38c;
+    --bg-light-mint: #DAF3F3;
+    --white: #ffffff;
+    --bg-light: #f8fafc;
+    --border-color: #e2e8f0;
+    --text-dark: #1e293b;
+    --text-gray: #64748b;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+}
+
+body {
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* 內容從上方開始 */
+}
+
+/* --- 2. 主內容容器 --- */
+.container {
+    max-width: 800px; /* 稍微縮窄一點，讓無導覽列時看起來更聚攏 */
+    margin: 60px auto; /* 上方留白增加，讓視覺更舒適 */
+    padding: 0 20px;
+    width: 100%;
+}
+
+/* 標題區域 */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.page-title {
+    font-size: 28px;
+    color: var(--text-dark);
+    border-left: 6px solid var(--primary-mint);
+    padding-left: 15px;
+    font-weight: 800;
+}
+
+/* 新增按鈕樣式 */
+.btn-create {
+    background-color: var(--primary-mint);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(98, 222, 177, 0.4);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+    .btn-create:hover {
+        background-color: var(--dark-mint);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(54, 179, 140, 0.4);
+    }
+
+/* --- 3. 旅程卡片列表 --- */
+.trip-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* 單個旅程卡片 */
+.trip-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+    .trip-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+        border-color: var(--primary-mint);
+    }
+
+.trip-info h3 {
+    font-size: 20px;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+}
+
+.trip-meta {
+    color: var(--text-gray);
+    font-size: 14px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+    .trip-meta i {
+        color: var(--primary-mint);
+        width: 20px;
+        text-align: center;
+    }
+
+/* 右側狀態標籤與箭頭 */
+.trip-action {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.status-badge {
+    background: #f0fdf9;
+    color: var(--dark-mint);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    border: 1px solid #ccfbf1;
+}
+
+.arrow-icon {
+    color: #cbd5e1;
+    font-size: 20px;
+    transition: 0.3s;
+}
+
+.trip-card:hover .arrow-icon {
+    color: var(--dark-mint);
+    transform: translateX(5px);
+}
+
+/* 響應式調整 */
+@media (max-width: 600px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .btn-create {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .trip-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .trip-action {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
