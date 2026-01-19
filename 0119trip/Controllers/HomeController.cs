@@ -18,12 +18,10 @@ public class HomeController : Controller
         return View();
     }
 
-    // --- 請新增這段程式碼 ---
     public IActionResult Detail()
     {
         return View();
-    }
-    // -----------------------
+    }    
 
     public IActionResult Privacy()
     {
