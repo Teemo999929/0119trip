@@ -1,7 +1,12 @@
+using _0119trip.Models;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+var connectionString = builder.Configuration.GetConnectionString("TravelDbContext");
+builder.Services.AddDbContext<TravelDbContext>(x => x.UseSqlServer(connectionString));
 
 var app = builder.Build();
 
