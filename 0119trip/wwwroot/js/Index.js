@@ -1,7 +1,7 @@
 ﻿function goToTrip(tripId) {
     console.log("前往旅程:", tripId);
-    // 請確保這裡的檔名對應到你原本的詳細頁面 HTML 檔案
-    window.location.href = 'detail.html';
+    // 修改為 MVC 的路由路徑
+    window.location.href = '/Home/Detail';
 }
 
 function createNewTrip() {
