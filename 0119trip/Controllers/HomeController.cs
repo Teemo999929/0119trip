@@ -106,6 +106,7 @@ public class HomeController : Controller
             expense.Day = dayNumber;
             expense.CategoryId = categoryId; // 這裡假設前端傳來的是 CategoryId (1~6)
 
+            // 4. 存檔
             await _context.SaveChangesAsync();
             return Json(new { success = true });
         }
