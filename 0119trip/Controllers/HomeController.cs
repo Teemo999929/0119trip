@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore; // 1. 記得引用這個，才能用 ToListAsync
 using _0119trip.Models;
 
 namespace _0119trip.Controllers;
@@ -7,21 +8,31 @@ namespace _0119trip.Controllers;
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
+    private readonly TravelDbContext _context; // 2. 宣告資料庫變數
 
-    public HomeController(ILogger<HomeController> logger)
+    // 3. 在建構子注入資料庫 Context
+    public HomeController(ILogger<HomeController> logger, TravelDbContext context)
     {
         _logger = logger;
+        _context = context;
     }
 
-    public IActionResult Index()
+    // 4. 修改 Index，撈取資料庫的 Trips
+    public async Task<IActionResult> Index()
     {
-        return View();
+        // 撈出所有旅程，並包含 TripMembers (為了計算人數)
+        // 注意：如果您還沒設定好 TripMembers 關聯，可以先拿掉 .Include(...)
+        var trips = await _context.Trips
+                                  .Include(t => t.TripMembers)
+                                  .ToListAsync();
+
+        return View(trips); // 將資料傳給 View
     }
 
     public IActionResult Detail()
     {
         return View();
-    }    
+    }
 
     public IActionResult Privacy()
     {
