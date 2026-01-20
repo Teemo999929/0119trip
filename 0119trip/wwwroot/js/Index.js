@@ -4,9 +4,20 @@
 //    window.location.href = '/Home/Detail';
 //}
 function goToTrip(tripId) {
-    console.log("前往旅程 ID:", tripId);
-    // 這裡改成帶參數的網址，例如 /Home/Detail?id=1
+    // 除錯用：印出來看看 ID 是多少
+    console.log("準備跳轉，ID 為:", tripId);
+
+    if (!tripId) {
+        alert("錯誤：ID 是空的！");
+        return;
+    }
+
+    // 這裡一定要有 ?id=
     window.location.href = '/Home/Detail?id=' + tripId;
+}
+
+function createNewTrip() {
+    alert("建立新旅程功能開發中！");
 }
 
 function createNewTrip() {
