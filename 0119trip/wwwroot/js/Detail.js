@@ -12,10 +12,10 @@ let appState = {
     ]
 };
 
-window.onload = () => { renderAll(); };
+//window.onload = () => { renderAll(); };
 
 function renderAll() {
-    renderGroupTab();
+    //renderGroupTab();
     renderPersonalTab();
     renderBalanceTab();
     updateTotalHeader();

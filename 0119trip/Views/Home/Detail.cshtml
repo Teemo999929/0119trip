@@ -41,7 +41,62 @@
     </div>
 
     <div id="tab-group" class="content-area active">
-        <div class="content-wrapper" id="group-content"></div>
+        <div class="content-wrapper" id="group-content">
+            @* --- 開始：花費列表迴圈 --- *@
+            @foreach (var item in Model.Expenses.OrderBy(e => e.Day))
+            {
+                var expenseDate = Model.StartDate.AddDays(item.Day - 1);
+
+                // --- C# 邏輯：處理付款人顯示文字 ---
+                string payerText = "未知";
+                if (item.ExpensePayers != null && item.ExpensePayers.Any())
+                {
+                    // 取得第一位付款人的名字
+                    var firstPayer = item.ExpensePayers.First().Member.User?.UserName ?? "未知";
+
+                    // 如果有多人付款，顯示「某某某 等人」
+                    if (item.ExpensePayers.Count > 1)
+                    {
+                        payerText = $"{firstPayer} 等人";
+                    }
+                    else
+                    {
+                        payerText = firstPayer;
+                    }
+                }
+                // ----------------------------------
+
+                <div class="expense-item" style="display:flex; justify-content:space-between; align-items:center; padding:15px; border-bottom:1px solid #eee; background:white; margin-bottom:10px; border-radius:8px;">
+                    <div class="expense-info">
+                        <div style="font-size:12px; color:#888; margin-bottom:4px;">
+                            <i class="fa-regular fa-calendar"></i> @expenseDate.ToString("MM/dd")
+                            <span style="margin-left:8px; background:#f0f9ff; color:#0369a1; padding:2px 6px; border-radius:4px; font-size:11px;">
+                                @(item.Category?.Name ?? "一般")
+                            </span>
+                        </div>
+
+                        <div style="font-weight:bold; font-size:16px;">@item.Title</div>
+
+                        <div style="font-size:12px; color:#666; margin-top:2px;">
+                            @payerText 付款
+                        </div>
+                    </div>
+
+                    <div class="expense-amount" style="font-weight:bold; color:#059669;">
+                        $@item.Amount.ToString("N0")
+                    </div>
+                </div>
+            }
+            }
+            else
+            {
+                <div style="text-align:center; padding:40px; color:#94a3b8;">
+                    <i class="fa-solid fa-receipt" style="font-size:48px; margin-bottom:10px; opacity:0.5;"></i>
+                    <p>目前還沒有任何花費紀錄</p>
+                </div>
+            }
+            @* --- 結束 --- *@
+        </div>
     </div>
 
     <div id="tab-personal" class="content-area">
@@ -103,7 +158,6 @@
                 <div class="avatar">無</div>
             }
 
-            <div class="avatar add-member-btn">+</div>
         </div>
         <div class="trip-total">
             <span>旅程總支出</span>
