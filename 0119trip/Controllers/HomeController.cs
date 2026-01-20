@@ -34,28 +34,29 @@ public class HomeController : Controller
         if (id == null) return NotFound();
 
         var trip = await _context.Trips
-            .Include(t => t.TripMembers)             // 1. 撈出旅程成員關聯表
-                .ThenInclude(tm => tm.User)        // 2. 再撈出成員對應的使用者資料 (AspNetUsers)
+            .Include(t => t.TripMembers).ThenInclude(tm => tm.User)  // 撈出成員對應的使用者資料 (AspNetUsers)
                 .Include(t => t.Expenses).ThenInclude(e => e.Category)
-
+                    //撈出付款人資訊
                 .Include(t => t.Expenses)
-                .ThenInclude(e => e.ExpensePayers)
-                .ThenInclude(ep => ep.Member)
-                    .ThenInclude(m => m.User)  //撈出付款人資訊
+                    .ThenInclude(e => e.ExpensePayers)
+                    .ThenInclude(ep => ep.Member)
+                    .ThenInclude(m => m.User)  
 
                     //撈出分攤人資訊 (為了算個人花費)
-                    .Include(t => t.Expenses)
-            .ThenInclude(e => e.ExpenseParticipants)
-                .ThenInclude(ep => ep.User) // 注意：您的 Model 裡屬性叫 User，但型別是 TripMember
+                .Include(t => t.Expenses)
+                    .ThenInclude(e => e.ExpenseParticipants)
+                    .ThenInclude(ep => ep.User) // 注意：您的 Model 裡屬性叫 User，但型別是 TripMember
                     .ThenInclude(tm => tm.User) // 再連一層到 AspNetUser
 
             .FirstOrDefaultAsync(m => m.Id == id);
 
         if (trip == null) return NotFound();
 
+        // 撈取所有類別傳給 View (用於下拉選單)
+        ViewBag.Categories = await _context.Categories.ToListAsync();
         return View(trip);
     }
-    // --- 新增：處理刪除支出 ---
+    // --- 處理刪除支出 ---
     [HttpPost]
     public async Task<IActionResult> DeleteExpense(int id)
     {
@@ -69,7 +70,7 @@ public class HomeController : Controller
         return Json(new { success = false, message = "找無此資料" });
     }
 
-    // --- 新增：處理 建立 或 編輯 支出 ---
+    // --- 處理 建立 或 編輯 支出 ---
     [HttpPost]
     public async Task<IActionResult> SaveExpense(int? id, int tripId, string title, decimal amount, DateTime date, int categoryId)
     {

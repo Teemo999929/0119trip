@@ -348,7 +348,18 @@ function openExpenseModal(isEdit = false) {
         document.getElementById('modal-title-text').innerText = "新增支出";
         document.getElementById('modal-submit-btn').innerText = "確認新增";
         appState.editingId = null;
-        document.getElementById('m-date').value = new Date().toISOString().split('T')[0];
+
+        // ★★★ 智慧判斷預設日期 ★★★
+        const today = new Date().toISOString().split('T')[0];
+        const range = window.tripRange; // 取得剛剛從 C# 傳來的範圍
+
+        // 如果 "今天" 在範圍內，就用今天；否則預設帶入 "旅程開始日"
+        if (range && (today < range.start || today > range.end)) {
+            document.getElementById('m-date').value = range.start;
+        } else {
+            document.getElementById('m-date').value = today;
+        }
+
         changeSplitMode('avg');
     }
 }
@@ -359,27 +370,64 @@ function closeModal(modalId) {
     setTimeout(() => modal.style.display = 'none', 300);
 }
 
+//function renderAddForm() {
+//    const payerList = document.getElementById('m-payer-list');
+//    payerList.innerHTML = appState.members.map(m => `
+//                <div class="checkbox-row">
+//                    <input type="checkbox" class="pay-check" value="${m}" onchange="updatePayTotal()">
+//                    <span>${m}</span>
+//                    <input type="number" class="pay-amt form-control" data-user="${m}" placeholder="金額" style="margin-left:10px;" oninput="updatePayTotal()">
+//                </div>
+//            `).join('');
+//    const splitList = document.getElementById('m-split-list');
+//    splitList.innerHTML = appState.members.map(m => `
+//                <div class="checkbox-row">
+//                    <input type="checkbox" class="part-check" checked value="${m}" onchange="handlePartCheck()">
+//                    <span>${m}</span>
+//                    <input type="number" class="part-amt form-control" data-user="${m}" placeholder="0" style="margin-left:10px;" disabled oninput="updateSplitTotal()">
+//                </div>
+//            `).join('');
+//    document.getElementById('m-name').value = '';
+//    document.getElementById('pay-total-val').innerText = '0';
+//    document.getElementById('split-total-val').innerText = '0';
+//}
+
+// 讀取資料庫傳來的成員
 function renderAddForm() {
     const payerList = document.getElementById('m-payer-list');
-    payerList.innerHTML = appState.members.map(m => `
-                <div class="checkbox-row">
-                    <input type="checkbox" class="pay-check" value="${m}" onchange="updatePayTotal()">
-                    <span>${m}</span>
-                    <input type="number" class="pay-amt form-control" data-user="${m}" placeholder="金額" style="margin-left:10px;" oninput="updatePayTotal()">
-                </div>
-            `).join('');
     const splitList = document.getElementById('m-split-list');
-    splitList.innerHTML = appState.members.map(m => `
-                <div class="checkbox-row">
-                    <input type="checkbox" class="part-check" checked value="${m}" onchange="handlePartCheck()">
-                    <span>${m}</span>
-                    <input type="number" class="part-amt form-control" data-user="${m}" placeholder="0" style="margin-left:10px;" disabled oninput="updateSplitTotal()">
-                </div>
-            `).join('');
+
+    // 檢查是否有資料
+    if (!window.dbMembers || window.dbMembers.length === 0) {
+        payerList.innerHTML = '無成員資料';
+        return;
+    }
+
+    // 1. 產生付款人清單 (使用 dbMembers)
+    // 注意：value 改用 m.id (資料庫的 TripMemberId)，顯示用 m.name
+    payerList.innerHTML = window.dbMembers.map(m => `
+        <div class="checkbox-row">
+            <input type="checkbox" class="pay-check" value="${m.id}" onchange="updatePayTotal()">
+            <span>${m.name}</span>
+            <input type="number" class="pay-amt form-control" data-user="${m.id}" placeholder="金額" style="margin-left:10px;" oninput="updatePayTotal()">
+        </div>
+    `).join('');
+
+    // 2. 產生分攤人清單
+    splitList.innerHTML = window.dbMembers.map(m => `
+        <div class="checkbox-row">
+            <input type="checkbox" class="part-check" checked value="${m.id}" onchange="handlePartCheck()">
+            <span>${m.name}</span>
+            <input type="number" class="part-amt form-control" data-user="${m.id}" placeholder="0" style="margin-left:10px;" disabled oninput="updateSplitTotal()">
+        </div>
+    `).join('');
+
+    // 重置其他欄位
     document.getElementById('m-name').value = '';
     document.getElementById('pay-total-val').innerText = '0';
     document.getElementById('split-total-val').innerText = '0';
 }
+
 
 function updatePayTotal() {
     let total = 0;
