@@ -52,7 +52,7 @@
                 if (item.ExpensePayers != null && item.ExpensePayers.Any())
                 {
                     // 取得第一位付款人的名字
-                    var firstPayer = item.ExpensePayers.First().Member.User?.UserName ?? "未知";
+                    var firstPayer = item.ExpensePayers.First().Member.User?.FullName ?? "未知";
 
                     // 如果有多人付款，顯示「某某某 等人」
                     if (item.ExpensePayers.Count > 1)
@@ -87,15 +87,7 @@
                     </div>
                 </div>
             }
-            }
-            else
-            {
-                <div style="text-align:center; padding:40px; color:#94a3b8;">
-                    <i class="fa-solid fa-receipt" style="font-size:48px; margin-bottom:10px; opacity:0.5;"></i>
-                    <p>目前還沒有任何花費紀錄</p>
-                </div>
-            }
-            @* --- 結束 --- *@
+           
         </div>
     </div>
 

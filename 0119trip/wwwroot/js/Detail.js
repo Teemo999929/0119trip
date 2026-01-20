@@ -6,10 +6,11 @@ let appState = {
     editingId: null,
     pendingSettle: null,
     pendingUndoId: null,
-    expenses: [
-        { id: 1, date: '2026-01-19', name: '安平老街早餐', cat: '食物', total: 200, payer: { '小一': 200 }, parts: { '小蘇': 67, '小一': 67, '小二': 66 } },
-        { id: 2, date: '2026-01-19', name: '香格里拉飯店', cat: '住宿', total: 2000, payer: { '小蘇': 2000 }, parts: { '小蘇': 666, '小一': 667, '小二': 667 } }
-    ]
+    //expenses: [
+    //    { id: 1, date: '2026-01-19', name: '安平老街早餐', cat: '食物', total: 200, payer: { '小一': 200 }, parts: { '小蘇': 67, '小一': 67, '小二': 66 } },
+    //    { id: 2, date: '2026-01-19', name: '香格里拉飯店', cat: '住宿', total: 2000, payer: { '小蘇': 2000 }, parts: { '小蘇': 666, '小一': 667, '小二': 667 } }
+    //]
+    expenses: []
 };
 
 //window.onload = () => { renderAll(); };
