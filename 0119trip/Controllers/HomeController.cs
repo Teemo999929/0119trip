@@ -29,9 +29,17 @@ public class HomeController : Controller
         return View(trips); // 將資料傳給 View
     }
 
-    public IActionResult Detail()
+    public async Task<IActionResult> Detail(int? id)
     {
-        return View();
+        if (id == null) return NotFound();
+
+        // 從資料庫撈出 ID 相符的那筆旅程
+        var trip = await _context.Trips
+                                 .FirstOrDefaultAsync(m => m.Id == id);
+
+        if (trip == null) return NotFound();
+
+        return View(trip); // 將撈到的 trip 資料傳給 View
     }
 
     public IActionResult Privacy()

@@ -1,4 +1,5 @@
-﻿@{
+﻿@model _0119trip.Models.Trip
+@{
     Layout = null;
 }
 
@@ -8,7 +9,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>旅程詳情 - 台南兩日遊</title>
+    <title>旅程收支詳情 </title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <link rel="stylesheet" href="~/css/Detail.css">
@@ -22,8 +23,10 @@
 
     <header class="page-header">
         <div class="header-left">
-            <i class="fa-solid fa-arrow-left back-btn" onclick="location.href='/Home/index'" title="返回列表"></i>
-            <h1 class="page-title">台南兩日遊美食行程</h1>
+            @* <i class="fa-solid fa-arrow-left back-btn" onclick="location.href='/Home/index'" title="返回列表"></i> *@
+            @* <h1 class="page-title">台南兩日遊美食行程</h1> *@
+            <i class="fa-solid fa-arrow-left back-btn" onclick="location.href='@Url.Action("Index", "Home")'" title="返回列表"></i>
+            <h1 class="page-title">@Model.Title</h1>
         </div>
 
         <button class="top-add-btn" onclick="openExpenseModal()">
