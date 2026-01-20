@@ -33,13 +33,14 @@ public class HomeController : Controller
     {
         if (id == null) return NotFound();
 
-        // 從資料庫撈出 ID 相符的那筆旅程
         var trip = await _context.Trips
-                                 .FirstOrDefaultAsync(m => m.Id == id);
+            .Include(t => t.TripMembers)             // 1. 撈出旅程成員關聯表
+                .ThenInclude(tm => tm.User)        // 2. 再撈出成員對應的使用者資料 (AspNetUsers)
+            .FirstOrDefaultAsync(m => m.Id == id);
 
         if (trip == null) return NotFound();
 
-        return View(trip); // 將撈到的 trip 資料傳給 View
+        return View(trip);
     }
 
     public IActionResult Privacy()

@@ -76,10 +76,33 @@
     </div>
 
     <div class="summary-header">
-        <div class="member-avatars">
+        @* <div class="member-avatars">
             <div class="avatar">蘇</div>
             <div class="avatar">一</div>
             <div class="avatar">二</div>
+            <div class="avatar add-member-btn">+</div>
+        </div> *@
+        <div class="member-avatars">
+            @* 1. 檢查是否有成員資料 *@
+            @if (Model.TripMembers != null && Model.TripMembers.Any())
+            {
+                @* 2. 跑迴圈列出每一位成員 *@
+                @foreach (var member in Model.TripMembers)
+                {
+                    // 1. 修正點：使用 .Member (關聯物件) 而不是 .UserId
+                    var name = member.User?.FullName ?? "未知";
+
+                    // 2. 取頭像字首
+                    var avatarChar = !string.IsNullOrEmpty(name) ? name.Substring(0, 1) : "?";
+
+                    <div class="avatar" title="@name">@avatarChar</div>
+                }
+            }
+            else
+            {
+                <div class="avatar">無</div>
+            }
+
             <div class="avatar add-member-btn">+</div>
         </div>
         <div class="trip-total">
