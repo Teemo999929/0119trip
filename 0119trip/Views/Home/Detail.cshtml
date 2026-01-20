@@ -82,8 +82,25 @@
                         </div>
                     </div>
 
-                    <div class="expense-amount" style="font-weight:bold; color:#059669;">
-                        $@item.Amount.ToString("N0")
+                    
+                    <div class="exp-right">
+                        <span class="expense-amount" style="font-weight:bold; color:#059669; display:block; text-align:right;">
+                            $@item.Amount.ToString("N0")
+                        </span>
+
+                        <div class="exp-actions" style="margin-top:5px; display:flex; gap:10px; justify-content:flex-end;">
+                            @* --- 編輯按鈕：直接把資料傳進去 (注意日期轉換) --- *@
+                            <button class="action-icon-btn" style="border:none; background:none; cursor:pointer; color:#64748b;"
+                                    onclick="openEditModal('@item.ExpenseId', '@item.Title', '@item.Amount', '@item.CategoryId', '@expenseDate.ToString("yyyy-MM-dd")')">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+
+                            @* --- 刪除按鈕：傳送 ID --- *@
+                            <button class="action-icon-btn delete" style="border:none; background:none; cursor:pointer; color:#ef4444;"
+                                    onclick="deleteExpense('@item.ExpenseId')">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             }

@@ -55,6 +55,64 @@ public class HomeController : Controller
 
         return View(trip);
     }
+    // --- 新增：處理刪除支出 ---
+    [HttpPost]
+    public async Task<IActionResult> DeleteExpense(int id)
+    {
+        var expense = await _context.Expenses.FindAsync(id);
+        if (expense != null)
+        {
+            _context.Expenses.Remove(expense);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+        return Json(new { success = false, message = "找無此資料" });
+    }
+
+    // --- 新增：處理 建立 或 編輯 支出 ---
+    [HttpPost]
+    public async Task<IActionResult> SaveExpense(int? id, int tripId, string title, decimal amount, DateTime date, int categoryId)
+    {
+        try
+        {
+            // 1. 計算是旅程的第幾天 (Day)
+            var trip = await _context.Trips.FindAsync(tripId);
+            if (trip == null) return Json(new { success = false, message = "旅程不存在" });
+
+            // 計算天數差 (Date - StartDate) + 1
+            int dayNumber = (date.Date - trip.StartDate.ToDateTime(TimeOnly.MinValue)).Days + 1;
+            if (dayNumber < 1) dayNumber = 1; // 防止日期選錯
+
+            // 將 expense 宣告為 nullable，避免 CS8600 警告
+            Expense? expense;
+            if (id.HasValue && id.Value > 0)
+            {
+                // --- 編輯模式 ---
+                expense = await _context.Expenses.FindAsync(id.Value);
+                if (expense == null) return Json(new { success = false, message = "找無此支出" });
+            }
+            else
+            {
+                // --- 新增模式 ---
+                expense = new Expense();
+                expense.TripId = tripId;
+                _context.Expenses.Add(expense);
+            }
+
+            // 更新欄位
+            expense.Title = title;
+            expense.Amount = amount;
+            expense.Day = dayNumber;
+            expense.CategoryId = categoryId; // 這裡假設前端傳來的是 CategoryId (1~6)
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
 
     public IActionResult Privacy()
     {

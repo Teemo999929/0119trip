@@ -227,36 +227,113 @@ function updateTotalHeader() {
     document.getElementById('header-total').innerText = total.toLocaleString();
 }
 
+//function deleteExpense(id) {
+//    if (confirm("確定要刪除這筆支出嗎？")) {
+//        appState.expenses = appState.expenses.filter(e => e.id !== id);
+//        renderAll();
+//    }
+//}
+
+//function editExpense(id) {
+//    const item = appState.expenses.find(e => e.id === id);
+//    if (!item) return;
+//    openExpenseModal(true);
+//    appState.editingId = id;
+//    document.getElementById('m-date').value = item.date;
+//    document.getElementById('m-name').value = item.name;
+//    document.getElementById('m-cat').value = item.cat;
+//    document.querySelectorAll('.pay-amt').forEach(input => {
+//        const user = input.dataset.user;
+//        const amt = item.payer[user] || 0;
+//        input.value = amt > 0 ? amt : '';
+//        input.closest('.checkbox-row').querySelector('.pay-check').checked = (amt > 0);
+//    });
+//    updatePayTotal();
+//    changeSplitMode('custom');
+//    document.querySelectorAll('.part-amt').forEach(input => {
+//        const user = input.dataset.user;
+//        const amt = item.parts[user] || 0;
+//        input.value = amt;
+//        input.closest('.checkbox-row').querySelector('.part-check').checked = (amt > 0);
+//    });
+//    updateSplitTotal();
+//}
+
+// 1. 刪除功能 (連接資料庫)
 function deleteExpense(id) {
-    if (confirm("確定要刪除這筆支出嗎？")) {
-        appState.expenses = appState.expenses.filter(e => e.id !== id);
-        renderAll();
-    }
+    if (!confirm("確定要刪除這筆支出嗎？（此操作無法復原）")) return;
+
+    // 發送 POST 請求給後端
+    fetch('/Home/DeleteExpense?id=' + id, { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload(); // 成功後重新整理頁面
+            } else {
+                alert("刪除失敗：" + (data.message || "未知錯誤"));
+            }
+        });
 }
 
-function editExpense(id) {
-    const item = appState.expenses.find(e => e.id === id);
-    if (!item) return;
-    openExpenseModal(true);
+// 2. 開啟編輯視窗 (接收 HTML 傳來的資料)
+function openEditModal(id, title, amount, catId, dateStr) {
+    openExpenseModal(true); // 打開模態框 (設定為編輯模式)
+
+    // 設定全域變數，讓儲存時知道現在是編輯哪一筆
     appState.editingId = id;
-    document.getElementById('m-date').value = item.date;
-    document.getElementById('m-name').value = item.name;
-    document.getElementById('m-cat').value = item.cat;
-    document.querySelectorAll('.pay-amt').forEach(input => {
-        const user = input.dataset.user;
-        const amt = item.payer[user] || 0;
-        input.value = amt > 0 ? amt : '';
-        input.closest('.checkbox-row').querySelector('.pay-check').checked = (amt > 0);
-    });
-    updatePayTotal();
-    changeSplitMode('custom');
-    document.querySelectorAll('.part-amt').forEach(input => {
-        const user = input.dataset.user;
-        const amt = item.parts[user] || 0;
-        input.value = amt;
-        input.closest('.checkbox-row').querySelector('.part-check').checked = (amt > 0);
-    });
-    updateSplitTotal();
+
+    // 填入表單資料
+    document.getElementById('m-date').value = dateStr;
+    document.getElementById('m-name').value = title;
+    // 注意：這裡假設您的 CategoryId 是 1~6，對應 select 的 value (例如 value="1" 代表食物)
+    // 如果您的 select value 是文字 (例如 "食物")，這裡可能要寫判斷轉換
+    document.getElementById('m-cat').selectedIndex = catId - 1;
+
+    // 填寫金額 (暫時簡化：編輯時先不處理分帳細節的顯示，只讓您改總額)
+    document.getElementById('pay-total-val').innerText = amount;
+
+    // 為了讓 UI 正常，把金額填入第一位成員的欄位 (這裡您可以再優化)
+    const firstInput = document.querySelector('.pay-amt');
+    if (firstInput) firstInput.value = amount;
+}
+
+// 3. 儲存功能 (連接資料庫)
+function saveExpense() {
+    const date = document.getElementById('m-date').value;
+    const name = document.getElementById('m-name').value;
+    const totalPay = Number(document.getElementById('pay-total-val').innerText);
+    const catIndex = document.getElementById('m-cat').selectedIndex + 1; // 假設順序對應 ID
+
+    if (!name || totalPay <= 0) { alert('請填寫完整資訊'); return; }
+
+    // 準備要傳給後端的資料
+    const formData = new FormData();
+    if (appState.editingId) formData.append('id', appState.editingId); // 如果是編輯，帶上 ID
+
+    // ★★★ 注意：這裡需要 TripId，我們通常從網址列抓 (例如 ?id=1)
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentTripId = urlParams.get('id');
+    formData.append('tripId', currentTripId);
+
+    formData.append('title', name);
+    formData.append('amount', totalPay);
+    formData.append('date', date);
+    formData.append('categoryId', catIndex);
+
+    // 發送請求
+    fetch('/Home/SaveExpense', {
+        method: 'POST',
+        body: formData
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                closeModal('expenseModal');
+                location.reload(); // 儲存成功，重新整理
+            } else {
+                alert("儲存失敗：" + data.message);
+            }
+        });
 }
 
 function openExpenseModal(isEdit = false) {
