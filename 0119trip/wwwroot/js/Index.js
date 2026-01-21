@@ -19,7 +19,3 @@ function goToTrip(tripId) {
 function createNewTrip() {
     alert("建立新旅程功能開發中！");
 }
-
-function createNewTrip() {
-    alert("建立新旅程功能開發中！");
-}
