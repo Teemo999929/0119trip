@@ -1,6 +1,5 @@
-﻿const currentUser = '小蘇';
+﻿//const currentUser = '小蘇';
 let appState = {
-    members: ['小蘇', '小一', '小二'],
     budget: 3000,
     splitMode: 'avg',
     editingId: null,
@@ -13,9 +12,23 @@ let appState = {
     expenses: []
 };
 
-//window.onload = () => { renderAll(); };
+window.onload = () => { renderAll(); };
 
 function renderAll() {
+    // 1. 載入支出資料
+    if (window.dbExpenses) {
+        appState.expenses = window.dbExpenses;
+    }
+
+    // ★★★ 2. 新增：載入個人預算 ★★★
+    // 如果後端有傳預算來，就覆蓋掉預設值
+    if (window.currentUser && window.currentUser.budget > 0) {
+        appState.budget = window.currentUser.budget;
+    } else {
+        appState.budget = 0; // 或者設一個預設值，例如 3000
+    }
+
+    // 3. 渲染各個區塊
     //renderGroupTab();
     renderPersonalTab();
     renderBalanceTab();
@@ -81,49 +94,107 @@ function renderGroupTab() {
     if (visibleExpenses.length === 0) container.innerHTML = '<div style="text-align:center; color:#999; margin-top:50px;">目前沒有支出紀錄<br>點擊右上角 + 記一筆</div>';
 }
 
+//function renderPersonalTab() {
+//    let myTotal = 0;
+//    const personalList = document.getElementById('personal-list');
+//    personalList.innerHTML = '';
+
+//    appState.expenses.forEach(ex => {
+//        if (ex.cat === '轉帳/結清') return;
+//        const myShare = ex.parts[currentUser] || 0;
+//        if (myShare > 0) {
+//            myTotal += myShare;
+//            personalList.innerHTML += `
+//                        <div class="expense-item">
+//                            <div class="exp-details">
+//                                <span class="exp-name">${ex.name}</span>
+//                                <span class="exp-sub">總額 $${ex.total}</span>
+//                            </div>
+//                            <div class="exp-amount" style="color:var(--text-dark);">
+//                                -$${myShare.toFixed(0)}
+//                            </div>
+//                        </div>
+//                    `;
+//        }
+//    });
+
+//    const percent = Math.min((myTotal / appState.budget) * 100, 100);
+//    document.getElementById('budget-bar').style.width = `${percent}%`;
+//    document.getElementById('budget-bar').style.backgroundColor = percent > 90 ? '#ff5252' : 'var(--primary-mint)';
+//    document.getElementById('budget-text').innerHTML = `<span style="color:var(--dark-mint)">$${myTotal.toFixed(0)}</span> <span style="color:#94a3b8; font-size:14px; font-weight:normal;">/ $${appState.budget}</span>`;
+//}
+
 function renderPersonalTab() {
     let myTotal = 0;
     const personalList = document.getElementById('personal-list');
+    if (!personalList) return; // 防呆檢查
+
     personalList.innerHTML = '';
+
+    // 1. 取得當前登入者的 ID (轉成字串，因為 JSON 的 Key 是字串)
+    // 如果沒有 currentUser (例如訪客)，就預設空字串
+    const myId = window.currentUser ? window.currentUser.id.toString() : "";
 
     appState.expenses.forEach(ex => {
         if (ex.cat === '轉帳/結清') return;
-        const myShare = ex.parts[currentUser] || 0;
+
+        // 2. 用 ID 去查分攤金額
+        const myShare = ex.parts[myId] || 0;
+
         if (myShare > 0) {
             myTotal += myShare;
             personalList.innerHTML += `
-                        <div class="expense-item">
-                            <div class="exp-details">
-                                <span class="exp-name">${ex.name}</span>
-                                <span class="exp-sub">總額 $${ex.total}</span>
-                            </div>
-                            <div class="exp-amount" style="color:var(--text-dark);">
-                                -$${myShare.toFixed(0)}
-                            </div>
-                        </div>
-                    `;
+                <div class="expense-item">
+                    <div class="exp-details">
+                        <span class="exp-name">${ex.name}</span>
+                        <span class="exp-sub">總額 $${ex.total.toLocaleString()}</span>
+                    </div>
+                    <div class="exp-amount" style="color:var(--text-dark);">
+                        -$${myShare.toFixed(0)}
+                    </div>
+                </div>
+            `;
         }
     });
 
-    const percent = Math.min((myTotal / appState.budget) * 100, 100);
-    document.getElementById('budget-bar').style.width = `${percent}%`;
-    document.getElementById('budget-bar').style.backgroundColor = percent > 90 ? '#ff5252' : 'var(--primary-mint)';
-    document.getElementById('budget-text').innerHTML = `<span style="color:var(--dark-mint)">$${myTotal.toFixed(0)}</span> <span style="color:#94a3b8; font-size:14px; font-weight:normal;">/ $${appState.budget}</span>`;
+    // 3. 更新預算條顯示 (這就是您原本問的那段邏輯，這裡寫得更嚴謹)
+    const budget = appState.budget || 3000; // 如果沒設定預算，預設 3000
+    const percent = Math.min((myTotal / budget) * 100, 100);
+
+    // 安全地更新 DOM
+    const bar = document.getElementById('budget-bar');
+    if (bar) {
+        bar.style.width = `${percent}%`;
+        bar.style.backgroundColor = percent > 90 ? '#ff5252' : 'var(--primary-mint)';
+    }
+
+    const txt = document.getElementById('budget-text');
+    if (txt) {
+        txt.innerHTML = `<span style="color:var(--dark-mint)">$${myTotal.toFixed(0)}</span> <span style="color:#94a3b8; font-size:14px; font-weight:normal;">/ $${budget}</span>`;
+    }
 }
 
 function calculateDebts() {
     let balances = {};
-    appState.members.forEach(m => balances[m] = 0);
+
+    // ★★★ 修正：使用資料庫傳來的成員 ID 初始化，而不是用寫死的 appState.members ★★★
+    if (window.dbMembers) {
+        window.dbMembers.forEach(m => balances[m.id] = 0);
+    }
+
     appState.expenses.forEach(ex => {
-        for (let p in ex.payer) { balances[p] += ex.payer[p]; }
-        for (let m in ex.parts) { balances[m] -= ex.parts[m]; }
+        // 注意：這裡的 p (payer key) 和 m (parts key) 都是字串型態的 ID
+        for (let p in ex.payer) { balances[p] = (balances[p] || 0) + ex.payer[p]; }
+        for (let m in ex.parts) { balances[m] = (balances[m] || 0) - ex.parts[m]; }
     });
 
     let debtors = [], creditors = [];
     for (const [member, amount] of Object.entries(balances)) {
-        if (amount < -1) debtors.push({ member, amount });
+        if (amount < -1) debtors.push({ member, amount }); // member 這裡是 ID
         else if (amount > 1) creditors.push({ member, amount });
     }
+
+    // 排序
     debtors.sort((a, b) => a.amount - b.amount);
     creditors.sort((a, b) => b.amount - a.amount);
 
@@ -131,7 +202,10 @@ function calculateDebts() {
     while (i < debtors.length && j < creditors.length) {
         let debtor = debtors[i], creditor = creditors[j];
         let amount = Math.min(Math.abs(debtor.amount), creditor.amount);
+
+        // 記錄轉帳建議 (from 和 to 都是 ID)
         transactions.push({ from: debtor.member, to: creditor.member, amount: amount });
+
         debtor.amount += amount; creditor.amount -= amount;
         if (Math.abs(debtor.amount) < 1) i++;
         if (creditor.amount < 1) j++;
@@ -139,6 +213,13 @@ function calculateDebts() {
     return transactions;
 }
 
+// 用 ID 查名字的小幫手
+function getMemberName(id) {
+    if (!window.dbMembers) return id;
+    // 注意：資料庫 ID 是數字，但 JSON key 可能是字串，用 == 比較寬鬆
+    const m = window.dbMembers.find(x => x.id == id);
+    return m ? m.name : "未知成員";
+}
 function renderBalanceTab() {
     const debtContainer = document.getElementById('balance-list');
     const settledContainer = document.getElementById('settled-list');
@@ -147,41 +228,51 @@ function renderBalanceTab() {
     if (debts.length === 0) {
         debtContainer.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">目前無待結清項目</div>';
     } else {
-        debtContainer.innerHTML = debts.map(d => `
-                    <div class="debt-card" onclick="openSettleModal('${d.from}', '${d.to}', ${d.amount})">
-                        <div class="debt-info">
-                            ${d.from} <i class="fa-solid fa-arrow-right arrow-icon"></i> ${d.to}
-                        </div>
-                        <div class="debt-amount">
-                            NT$${Math.round(d.amount)}
-                        </div>
+        debtContainer.innerHTML = debts.map(d => {
+            // ★★★ 修正：把 ID 轉成名字顯示 ★★★
+            const fromName = getMemberName(d.from);
+            const toName = getMemberName(d.to);
+
+            return `
+                <div class="debt-card" onclick="openSettleModal('${fromName}', '${toName}', ${d.amount})">
+                    <div class="debt-info">
+                        ${fromName} <i class="fa-solid fa-arrow-right arrow-icon"></i> ${toName}
                     </div>
-                `).join('');
+                    <div class="debt-amount">
+                        NT$${Math.round(d.amount)}
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
+    // 處理已結清 (Settled) 列表
     const settledItems = appState.expenses.filter(ex => ex.cat === '轉帳/結清');
     if (settledItems.length === 0) {
         settledContainer.innerHTML = '<div style="text-align:center; color:#ccc; font-size:13px;">尚無結清紀錄</div>';
     } else {
         settledItems.sort((a, b) => b.id - a.id);
         settledContainer.innerHTML = settledItems.map(item => {
-            const payer = Object.keys(item.payer)[0];
-            const receiver = Object.keys(item.parts)[0];
+            // ★★★ 修正：同樣要把 ID 轉成名字 ★★★
+            const payerId = Object.keys(item.payer)[0];
+            const receiverId = Object.keys(item.parts)[0];
+            const payerName = getMemberName(payerId);
+            const receiverName = getMemberName(receiverId);
+
             return `
-                        <div class="settled-card" onclick="openUndoSettleModal(${item.id})">
-                            <div class="settled-info">
-                                ${payer} <i class="fa-solid fa-check" style="color:var(--dark-mint);"></i> ${receiver}
-                                <span class="settled-badge">已結清</span>
-                            </div>
-                            <div class="settled-amount">
-                                NT$${item.total}
-                            </div>
-                        </div>
-                    `;
+                <div class="settled-card" onclick="openUndoSettleModal(${item.id})">
+                    <div class="settled-info">
+                        ${payerName} <i class="fa-solid fa-check" style="color:var(--dark-mint);"></i> ${receiverName}
+                        <span class="settled-badge">已結清</span>
+                    </div>
+                    <div class="settled-amount">
+                        NT$${item.total}
+                    </div>
+                </div>
+            `;
         }).join('');
     }
 }
-
 function openSettleModal(from, to, amount) {
     appState.pendingSettle = { from, to, amount: Math.round(amount) };
     document.getElementById('settle-desc').innerHTML = `<b>${from}</b> 需支付 <b>${to}</b>`;
@@ -507,56 +598,51 @@ function updateSplitTotal() {
     document.getElementById('split-total-val').innerText = total;
 }
 
-function editMyBudget() {
-    const newB = prompt("請輸入新的預算金額：", appState.budget);
-    if (newB && !isNaN(newB)) {
-        appState.budget = Number(newB);
-        renderPersonalTab();
-    }
-}
-
-//function saveExpense() {
-//    const date = document.getElementById('m-date').value;
-//    const name = document.getElementById('m-name').value;
-//    const totalPay = Number(document.getElementById('pay-total-val').innerText);
-//    const totalSplit = Number(document.getElementById('split-total-val').innerText);
-//    if (!name || totalPay <= 0) { alert('請填寫完整資訊'); return; }
-//    if (Math.abs(totalPay - totalSplit) > 5) { alert('付款總額與分攤總額不符！'); return; }
-
-//    let payers = {};
-//    document.querySelectorAll('.pay-amt').forEach(input => {
-//        const val = Number(input.value);
-//        if (val > 0 && input.closest('.checkbox-row').querySelector('.pay-check').checked) {
-//            payers[input.dataset.user] = val;
-//        }
-//    });
-
-//    let parts = {};
-//    document.querySelectorAll('.part-amt').forEach(input => {
-//        const val = Number(input.value);
-//        if (val > 0 && input.closest('.checkbox-row').querySelector('.part-check').checked) {
-//            parts[input.dataset.user] = val;
-//        }
-//    });
-
-//    const newExpense = {
-//        id: appState.editingId ? appState.editingId : Date.now(),
-//        date: date,
-//        name: name,
-//        cat: document.getElementById('m-cat').value,
-//        total: totalPay,
-//        payer: payers,
-//        parts: parts
-//    };
-
-//    if (appState.editingId) {
-//        const idx = appState.expenses.findIndex(e => e.id === appState.editingId);
-//        if (idx !== -1) appState.expenses[idx] = newExpense;
-//    } else {
-//        appState.expenses.push(newExpense);
+//function editMyBudget() {
+//    const newB = prompt("請輸入新的預算金額：", appState.budget);
+//    if (newB && !isNaN(newB)) {
+//        appState.budget = Number(newB);
+//        renderPersonalTab();
 //    }
-
-//    closeModal('expenseModal');
-//    renderAll();
-//    switchTab('group');
 //}
+
+function editMyBudget() {
+    // 1. 跳出輸入框
+    const oldBudget = appState.budget || 0;
+    const input = prompt("請輸入新的預算金額：", oldBudget);
+
+    // 驗證輸入
+    if (input === null) return; // 按取消
+    const newBudget = Number(input);
+    if (isNaN(newBudget) || newBudget < 0) { alert("請輸入有效的數字"); return; }
+
+    // 2. 抓取 TripId
+    const urlParams = new URLSearchParams(window.location.search);
+    const tripId = urlParams.get('id');
+
+    // 3. 呼叫後端存檔
+    const formData = new FormData();
+    formData.append('tripId', tripId);
+    formData.append('newBudget', newBudget);
+
+    fetch('/Home/UpdateBudget', {
+        method: 'POST',
+        body: formData
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // 更新成功，修改前端顯示
+                appState.budget = newBudget;
+
+                // 同步更新 window.currentUser 避免切換時跑掉
+                if (window.currentUser) window.currentUser.budget = newBudget;
+
+                renderPersonalTab(); // 重畫進度條
+                // alert("預算已更新！"); //這行看你想不想跳通知
+            } else {
+                alert("更新失敗：" + data.message);
+            }
+        })
+        .catch(err => alert("系統錯誤"));
+}

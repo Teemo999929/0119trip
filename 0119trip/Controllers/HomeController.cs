@@ -56,23 +56,87 @@ public class HomeController : Controller
 
         // 撈取所有類別傳給 View (用於下拉選單)
         ViewBag.Categories = await _context.Categories.ToListAsync();
+
+        //// 動態抓取目前登入者的資料 
+        //int currentAspNetUserId = 0;
+
+        //// 從 Cookie 中讀取登入者的 UserId (字串轉整數)
+        //var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out int parsedId))
+        //{
+        //    currentAspNetUserId = parsedId;
+        //}
+
+        // ★★★ 測試用：暫時寫死成 2 (假設我是王小明) ★★★
+        int currentAspNetUserId = 2;
+
+        // 在這趟旅程的成員名單中，尋找對應這個 UserId 的成員
+        // 這樣我們才能知道他的 MemberId (記帳是用這個 ID) 和 Budget
+        var myMemberInfo = trip.TripMembers.FirstOrDefault(m => m.UserId == currentAspNetUserId);
+
+        // ★★★ 4. 將抓到的資料存入 ViewBag 傳給前端 ★★★
+        // 如果找不到 (myMemberInfo是null)，代表他是訪客或沒登入，ID 設為 0
+        ViewBag.CurrentMemberId = myMemberInfo?.Id ?? 0;
+        ViewBag.CurrentMemberName = myMemberInfo?.User?.FullName ?? "訪客";
+        ViewBag.CurrentBudget = myMemberInfo?.Budget ?? 0;
         return View(trip);
     }
-    // --- 處理刪除支出 ---
+
+    // ----------------- 處理預算 -----------------
+    [HttpPost]
+    public async Task<IActionResult> UpdateBudget(int tripId, decimal newBudget)
+    {
+        // 1. 抓取目前登入者 (測試期間寫死 ID=2，之後記得改回 User.FindFirstValue)
+        int currentAspNetUserId = 2;
+
+        // 2. 找出對應的成員
+        var member = await _context.TripMembers
+            .FirstOrDefaultAsync(m => m.TripId == tripId && m.UserId == currentAspNetUserId);
+
+        if (member == null) return Json(new { success = false, message = "找不到成員資料" });
+
+        // 3. 更新預算
+        member.Budget = newBudget;
+        await _context.SaveChangesAsync();
+
+        return Json(new { success = true });
+    }
+
+    // ----------------- 處理刪除支出 -----------------
     [HttpPost]
     public async Task<IActionResult> DeleteExpense(int id)
     {
-        var expense = await _context.Expenses.FindAsync(id);
+        // 1. 改用 Include 撈出這筆支出，順便把關聯的付款人、分攤人都抓出來
+        // 注意：這裡假設主鍵是 ExpenseId，如果您的主鍵是 Id，請自行調整為 e.Id
+        var expense = await _context.Expenses
+            .Include(e => e.ExpensePayers)
+            .Include(e => e.ExpenseParticipants)
+            .FirstOrDefaultAsync(e => e.ExpenseId == id);
+
         if (expense != null)
         {
+            // 2. 先刪除子資料 (付款人 & 分攤人)
+            // 這樣才不會因為外鍵約束而報錯
+            if (expense.ExpensePayers.Any())
+            {
+                _context.ExpensePayers.RemoveRange(expense.ExpensePayers);
+            }
+
+            if (expense.ExpenseParticipants.Any())
+            {
+                _context.ExpenseParticipants.RemoveRange(expense.ExpenseParticipants);
+            }
+
+            // 3. 子資料都清空後，終於可以刪除主資料了
             _context.Expenses.Remove(expense);
+
             await _context.SaveChangesAsync();
             return Json(new { success = true });
         }
         return Json(new { success = false, message = "找無此資料" });
     }
 
-    // --- 處理 建立 或 編輯 支出 ---
+    // ----------------- 處理 建立 或 編輯 支出 -----------------
     [HttpPost]
     public async Task<IActionResult> SaveExpense(int? id, int tripId, string title, decimal amount, DateTime date, int? categoryId, string payersJson, string partsJson)
     {
