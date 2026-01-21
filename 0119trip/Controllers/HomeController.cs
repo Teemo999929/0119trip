@@ -23,12 +23,11 @@ public class HomeController : Controller
     public async Task<IActionResult> Index()
     {
         // 撈出所有旅程，並包含 TripMembers (為了計算人數)
-        // 注意：如果您還沒設定好 TripMembers 關聯，可以先拿掉 .Include(...)
         var trips = await _context.Trips
                                   .Include(t => t.TripMembers)
                                   .ToListAsync();
 
-        return View(trips); // 將資料傳給 View
+        return View(trips); 
     }
 
     public async Task<IActionResult> Detail(int? id)
@@ -115,7 +114,6 @@ public class HomeController : Controller
     public async Task<IActionResult> DeleteExpense(int id)
     {
         // 1. 改用 Include 撈出這筆支出，順便把關聯的付款人、分攤人都抓出來
-        // 注意：這裡假設主鍵是 ExpenseId，如果您的主鍵是 Id，請自行調整為 e.Id
         var expense = await _context.Expenses
             .Include(e => e.ExpensePayers)
             .Include(e => e.ExpenseParticipants)
@@ -123,8 +121,7 @@ public class HomeController : Controller
 
         if (expense != null)
         {
-            // 2. 先刪除子資料 (付款人 & 分攤人)
-            // 這樣才不會因為外鍵約束而報錯
+            // 2. 先刪除子資料 (付款人 & 分攤人)，這樣才不會因為外鍵約束而報錯
             if (expense.ExpensePayers.Any())
             {
                 _context.ExpensePayers.RemoveRange(expense.ExpensePayers);
@@ -135,7 +132,7 @@ public class HomeController : Controller
                 _context.ExpenseParticipants.RemoveRange(expense.ExpenseParticipants);
             }
 
-            // 3. 子資料都清空後，終於可以刪除主資料了
+            // 3. 子資料都清空後，可以刪除主資料
             _context.Expenses.Remove(expense);
 
             await _context.SaveChangesAsync();
@@ -284,7 +281,6 @@ public class HomeController : Controller
     [HttpPost]
     public async Task<IActionResult> DeleteSettlement(int id)
     {
-        // ★★★ 注意：這裡要用您的主鍵名稱 SettlementId 來尋找 ★★★
         var settlement = await _context.Settlements.FirstOrDefaultAsync(s => s.SettlementId == id);
 
         if (settlement != null)
