@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore; // 1. 記得引用這個，才能用 ToListAsync
 using _0119trip.Models;
 using System.Text.Json;
+using System.Security.Claims;
 
 namespace _0119trip.Controllers;
 
