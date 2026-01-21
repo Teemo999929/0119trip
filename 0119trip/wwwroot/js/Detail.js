@@ -12,7 +12,15 @@ let appState = {
     expenses: []
 };
 
-window.onload = () => { renderAll(); };
+window.onload = () => {
+    renderAll();
+
+    // 讀取上次停留的頁籤，如果有紀錄，就自動切換過去
+    const lastTab = localStorage.getItem('lastActiveTab');
+    if (lastTab) {
+        switchTab(lastTab);
+    }
+};
 
 function renderAll() {
     // 1. 載入支出資料
@@ -36,12 +44,20 @@ function renderAll() {
 }
 
 function switchTab(tabName) {
+    // 1. 原本的 UI 切換邏輯 (維持不變)
     document.querySelectorAll('.content-area').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-    document.getElementById(`tab-${tabName}`).classList.add('active');
+
+    // 加上簡單防呆，避免找不到元素報錯
+    const targetTab = document.getElementById(`tab-${tabName}`);
+    if (targetTab) targetTab.classList.add('active');
 
     const btnIndex = tabName === 'group' ? 0 : tabName === 'personal' ? 1 : 2;
-    document.querySelectorAll('.tab-btn')[btnIndex].classList.add('active');
+    const btns = document.querySelectorAll('.tab-btn');
+    if (btns[btnIndex]) btns[btnIndex].classList.add('active');
+
+    // ★★★ 2. 新增這行：把現在的分頁名稱存到瀏覽器記憶體 ★★★
+    localStorage.setItem('lastActiveTab', tabName);
 }
 
 function renderGroupTab() {
@@ -177,24 +193,28 @@ function renderPersonalTab() {
 function calculateDebts() {
     let balances = {};
 
-    // ★★★ 修正：使用資料庫傳來的成員 ID 初始化，而不是用寫死的 appState.members ★★★
+    // 初始化餘額
     if (window.dbMembers) {
         window.dbMembers.forEach(m => balances[m.id] = 0);
     }
 
+    // ★★★ 重點：只計算「實際消費」，完全忽略還款紀錄 ★★★
     appState.expenses.forEach(ex => {
-        // 注意：這裡的 p (payer key) 和 m (parts key) 都是字串型態的 ID
+        // 絕對要過濾掉 '轉帳/結清' 類別，確保只算消費債務
+        if (ex.cat === '轉帳/結清') return;
+
+        // 計算誰幫誰付了錢
         for (let p in ex.payer) { balances[p] = (balances[p] || 0) + ex.payer[p]; }
         for (let m in ex.parts) { balances[m] = (balances[m] || 0) - ex.parts[m]; }
     });
 
+    // (以下邏輯不變：找出債權人與債務人並配對)
     let debtors = [], creditors = [];
     for (const [member, amount] of Object.entries(balances)) {
-        if (amount < -1) debtors.push({ member, amount }); // member 這裡是 ID
+        if (amount < -1) debtors.push({ member, amount });
         else if (amount > 1) creditors.push({ member, amount });
     }
 
-    // 排序
     debtors.sort((a, b) => a.amount - b.amount);
     creditors.sort((a, b) => b.amount - a.amount);
 
@@ -203,13 +223,14 @@ function calculateDebts() {
         let debtor = debtors[i], creditor = creditors[j];
         let amount = Math.min(Math.abs(debtor.amount), creditor.amount);
 
-        // 記錄轉帳建議 (from 和 to 都是 ID)
         transactions.push({ from: debtor.member, to: creditor.member, amount: amount });
 
         debtor.amount += amount; creditor.amount -= amount;
         if (Math.abs(debtor.amount) < 1) i++;
         if (creditor.amount < 1) j++;
     }
+
+    // 這裡回傳的是「完全還沒扣除還款」的原始債務建議
     return transactions;
 }
 
@@ -224,49 +245,86 @@ function renderBalanceTab() {
     const debtContainer = document.getElementById('balance-list');
     const settledContainer = document.getElementById('settled-list');
 
+    // 1. 取得「原始債務」
     const debts = calculateDebts();
+    // 2. 取得「還款紀錄」 (從 Controller 傳來的 window.dbSettlements)
+    const settlements = window.dbSettlements || [];
+
     if (debts.length === 0) {
         debtContainer.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">目前無待結清項目</div>';
     } else {
         debtContainer.innerHTML = debts.map(d => {
-            // ★★★ 修正：把 ID 轉成名字顯示 ★★★
             const fromName = getMemberName(d.from);
             const toName = getMemberName(d.to);
 
-            return `
-                <div class="debt-card" onclick="openSettleModal('${fromName}', '${toName}', ${d.amount})">
-                    <div class="debt-info">
-                        ${fromName} <i class="fa-solid fa-arrow-right arrow-icon"></i> ${toName}
+            // ★★★ 核心邏輯：計算這個債務組合 (A -> B) 已經還了多少錢 ★★★
+            // 篩選條件：還款人是 A (d.from) 且 收款人是 B (d.to)
+            const paidAmount = settlements
+                .filter(s => s.payerId == d.from && s.payeeId == d.to)
+                .reduce((sum, s) => sum + s.amount, 0);
+
+            // 判斷狀態
+            const isFullyPaid = paidAmount >= d.amount - 1; // 容許 1 元誤差
+            const remaining = d.amount - paidAmount;
+
+            // 根據狀態決定顯示樣式
+            if (isFullyPaid) {
+                // === 狀態 A：已結清 (顯示綠色，不可點擊) ===
+                return `
+                    <div class="debt-card" style="border-left: 4px solid var(--primary-mint); opacity: 0.8; background-color: #f0fdf4;">
+                        <div class="debt-info">
+                            <span style="text-decoration: line-through; color: #888;">
+                                ${fromName} <i class="fa-solid fa-arrow-right arrow-icon"></i> ${toName}
+                            </span>
+                            <span style="margin-left:10px; color:var(--primary-mint); font-weight:bold; font-size:12px;">
+                                <i class="fa-solid fa-check"></i> 已還款
+                            </span>
+                        </div>
+                        <div class="debt-amount" style="color: #888;">
+                            NT$${Math.round(d.amount)}
+                        </div>
                     </div>
-                    <div class="debt-amount">
-                        NT$${Math.round(d.amount)}
+                `;
+            } else {
+                // === 狀態 B：未結清 / 部分結清 (顯示紅色，可點擊) ===
+                // 如果有部分還款，顯示剩餘金額
+                const subText = paidAmount > 0 ? `<br><span style="font-size:12px; color:#666;">(已還 $${Math.round(paidAmount)})</span>` : '';
+
+                return `
+                    <div class="debt-card" onclick="openSettleModal('${d.from}', '${d.to}', ${remaining})" style="cursor:pointer;">
+                        <div class="debt-info">
+                            ${fromName} <i class="fa-solid fa-arrow-right arrow-icon"></i> ${toName}
+                            ${paidAmount > 0 ? '<span style="font-size:12px; color:#f59e0b; margin-left:5px;">(部分還款)</span>' : ''}
+                        </div>
+                        <div class="debt-amount">
+                            NT$${Math.round(remaining)}
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            }
         }).join('');
     }
 
-    // 處理已結清 (Settled) 列表
-    const settledItems = appState.expenses.filter(ex => ex.cat === '轉帳/結清');
-    if (settledItems.length === 0) {
-        settledContainer.innerHTML = '<div style="text-align:center; color:#ccc; font-size:13px;">尚無結清紀錄</div>';
+    // (下方顯示詳細還款紀錄的區塊，如果您想保留可以留著，不想要也可以隱藏)
+    // 建議保留，這樣可以查閱每一筆還款的時間點
+    if (settlements.length === 0) {
+        settledContainer.innerHTML = '<div style="text-align:center; color:#ccc; font-size:13px;">尚無還款紀錄</div>';
     } else {
-        settledItems.sort((a, b) => b.id - a.id);
-        settledContainer.innerHTML = settledItems.map(item => {
-            // ★★★ 修正：同樣要把 ID 轉成名字 ★★★
-            const payerId = Object.keys(item.payer)[0];
-            const receiverId = Object.keys(item.parts)[0];
-            const payerName = getMemberName(payerId);
-            const receiverName = getMemberName(receiverId);
+        // 按 ID 倒序排列 (最新的在上面)
+        const sortedSettlements = [...settlements].sort((a, b) => b.id - a.id);
+
+        settledContainer.innerHTML = sortedSettlements.map(item => {
+            const payerName = getMemberName(item.payerId);
+            const receiverName = getMemberName(item.payeeId);
 
             return `
                 <div class="settled-card" onclick="openUndoSettleModal(${item.id})">
                     <div class="settled-info">
                         ${payerName} <i class="fa-solid fa-check" style="color:var(--dark-mint);"></i> ${receiverName}
-                        <span class="settled-badge">已結清</span>
+                        <span class="settled-badge">還款紀錄</span>
                     </div>
                     <div class="settled-amount">
-                        NT$${item.total}
+                        NT$${Math.round(item.amount)}
                     </div>
                 </div>
             `;
@@ -284,19 +342,36 @@ function openSettleModal(from, to, amount) {
 
 function confirmSettle() {
     if (!appState.pendingSettle) return;
-    const { from, to, amount } = appState.pendingSettle;
-    const newExpense = {
-        id: Date.now(),
-        date: new Date().toISOString().split('T')[0],
-        name: '結清款項',
-        cat: '轉帳/結清',
-        total: amount,
-        payer: { [from]: amount },
-        parts: { [to]: amount }
-    };
-    appState.expenses.push(newExpense);
-    closeModal('settleModal');
-    renderAll();
+
+    // 取得資料
+    const { from, to, amount } = appState.pendingSettle; // 這裡的 from/to 都是 ID
+
+    // 取得 TripId
+    const urlParams = new URLSearchParams(window.location.search);
+    const tripId = urlParams.get('id');
+
+    // 準備表單
+    const formData = new FormData();
+    formData.append('tripId', tripId);
+    formData.append('payerId', from); // 還錢的人
+    formData.append('payeeId', to);   // 收錢的人
+    formData.append('amount', amount);
+
+    // 發送請求給後端
+    fetch('/Home/CreateSettlement', {
+        method: 'POST',
+        body: formData
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                closeModal('settleModal');
+                location.reload(); // 重新整理後，renderBalanceTab 就會抓到新的還款紀錄並變更顯示狀態
+            } else {
+                alert("還款失敗：" + data.message);
+            }
+        })
+        .catch(err => alert("系統錯誤"));
 }
 
 function openUndoSettleModal(id) {
@@ -307,10 +382,28 @@ function openUndoSettleModal(id) {
 }
 
 function confirmUndoSettle() {
+    // 防呆檢查
     if (!appState.pendingUndoId) return;
-    appState.expenses = appState.expenses.filter(e => e.id !== appState.pendingUndoId);
-    closeModal('undoSettleModal');
-    renderAll();
+
+    // ★★★ 修正重點：改成呼叫後端 API 刪除資料庫紀錄 ★★★
+    fetch('/Home/DeleteSettlement?id=' + appState.pendingUndoId, {
+        method: 'POST'
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // 成功後關閉視窗
+                closeModal('undoSettleModal');
+                // 重新整理頁面，讓還款紀錄消失，債務金額恢復
+                location.reload();
+            } else {
+                alert("取消失敗：" + (data.message || "未知錯誤"));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("系統發生錯誤");
+        });
 }
 
 function updateTotalHeader() {

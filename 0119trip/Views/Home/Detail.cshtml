@@ -298,6 +298,16 @@
         // 轉換分攤人: Key=UserId (TripMemberId), Value=ShareAmount
         parts = e.ExpenseParticipants.ToDictionary(p => p.UserId.ToString(), p => p.ShareAmount)
     })));
+
+    window.dbSettlements = @Html.Raw(Json.Serialize(Model.Settlements.Select(s => new {
+        id = s.SettlementId,     // 這裡要拿 SettlementId
+        payerId = s.FromUserId,  // 這裡拿 FromUserId (還錢的人)
+        payeeId = s.ToUserId,    // 這裡拿 ToUserId (收錢的人)
+        amount = s.Amount,
+        date = s.UpdatedAt.HasValue 
+               ? s.UpdatedAt.Value.ToString("yyyy-MM-dd") 
+               : "未知日期"
+    })));
 </script>
     <script src="~/js/Detail.js"></script>
 </body>

@@ -50,6 +50,14 @@ public class HomeController : Controller
                     .ThenInclude(ep => ep.User) // 注意：您的 Model 裡屬性叫 User，但型別是 TripMember
                     .ThenInclude(tm => tm.User) // 再連一層到 AspNetUser
 
+                // 撈取結清紀錄 (Settlements) 
+                .Include(t => t.Settlements)
+                    .ThenInclude(s => s.FromUser) 
+                    .ThenInclude(m => m.User) // 1. 載入「付款人 (FromUser)」的名字
+                                      
+                .Include(t => t.Settlements)
+                    .ThenInclude(s => s.ToUser)  
+                    .ThenInclude(m => m.User)// 2. 載入「收款人 (ToUser)」的名字
             .FirstOrDefaultAsync(m => m.Id == id);
 
         if (trip == null) return NotFound();
@@ -243,6 +251,51 @@ public class HomeController : Controller
             return Json(new { success = false, message = "存檔失敗：" + ex.Message + (ex.InnerException != null ? " | " + ex.InnerException.Message : "") });
         }
     }
+
+    // ----------------- 新增結清紀錄 -----------------
+    [HttpPost]
+    public async Task<IActionResult> CreateSettlement(int tripId, int payerId, int payeeId, decimal amount)
+    {
+        try
+        {
+            var settlement = new Settlement
+            {
+                TripId = tripId,
+                // 對應前端傳來的 payerId (還錢的人) -> 存入 FromUserId (債務人)
+                FromUserId = payerId,
+                // 對應前端傳來的 payeeId (收錢的人) -> 存入 ToUserId (債權人)
+                ToUserId = payeeId,
+                Amount = amount,
+                IsPaid = true,        // 標記為已支付
+                UpdatedAt = DateTimeOffset.Now
+            };
+
+            _context.Settlements.Add(settlement);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
+    }
+
+    // ----------------- 刪除結清紀錄 -----------------
+    [HttpPost]
+    public async Task<IActionResult> DeleteSettlement(int id)
+    {
+        // ★★★ 注意：這裡要用您的主鍵名稱 SettlementId 來尋找 ★★★
+        var settlement = await _context.Settlements.FirstOrDefaultAsync(s => s.SettlementId == id);
+
+        if (settlement != null)
+        {
+            _context.Settlements.Remove(settlement);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+        return Json(new { success = false, message = "找不到此紀錄" });
+    }
+
 
     public IActionResult Privacy()
     {
