@@ -23,20 +23,19 @@ window.onload = () => {
 };
 
 function renderAll() {
-    // 1. 載入支出資料
+    // 載入支出資料
     if (window.dbExpenses) {
         appState.expenses = window.dbExpenses;
     }
 
-    // ★★★ 2. 新增：載入個人預算 ★★★
-    // 如果後端有傳預算來，就覆蓋掉預設值
+    // 載入個人預算，如果後端有傳預算來，就覆蓋掉預設值
     if (window.currentUser && window.currentUser.budget > 0) {
         appState.budget = window.currentUser.budget;
     } else {
-        appState.budget = 0; // 或者設一個預設值，例如 3000
+        appState.budget = 0; // 可設一個預設值，例如 3000
     }
 
-    // 3. 渲染各個區塊
+    // 渲染各個區塊
     //renderGroupTab();
     renderPersonalTab();
     renderBalanceTab();
@@ -44,7 +43,7 @@ function renderAll() {
 }
 
 function switchTab(tabName) {
-    // 1. 原本的 UI 切換邏輯 (維持不變)
+    //  UI 切換邏輯 
     document.querySelectorAll('.content-area').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
 
@@ -56,7 +55,7 @@ function switchTab(tabName) {
     const btns = document.querySelectorAll('.tab-btn');
     if (btns[btnIndex]) btns[btnIndex].classList.add('active');
 
-    // ★★★ 2. 新增這行：把現在的分頁名稱存到瀏覽器記憶體 ★★★
+    // 把現在的分頁名稱存到瀏覽器記憶體
     localStorage.setItem('lastActiveTab', tabName);
 }
 
@@ -66,7 +65,7 @@ function renderGroupTab() {
     const groups = {};
     appState.expenses.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    // 修改：過濾掉 '轉帳/結清'，不顯示在群組花費
+    // 過濾掉 '轉帳/結清'，不顯示在群組花費
     const visibleExpenses = appState.expenses.filter(ex => ex.cat !== '轉帳/結清');
 
     visibleExpenses.forEach(ex => {
@@ -198,7 +197,7 @@ function calculateDebts() {
         window.dbMembers.forEach(m => balances[m.id] = 0);
     }
 
-    // ★★★ 重點：只計算「實際消費」，完全忽略還款紀錄 ★★★
+    // 只計算「實際消費」，完全忽略還款紀錄
     appState.expenses.forEach(ex => {
         // 絕對要過濾掉 '轉帳/結清' 類別，確保只算消費債務
         if (ex.cat === '轉帳/結清') return;
@@ -208,7 +207,7 @@ function calculateDebts() {
         for (let m in ex.parts) { balances[m] = (balances[m] || 0) - ex.parts[m]; }
     });
 
-    // (以下邏輯不變：找出債權人與債務人並配對)
+    // 找出債權人與債務人並配對
     let debtors = [], creditors = [];
     for (const [member, amount] of Object.entries(balances)) {
         if (amount < -1) debtors.push({ member, amount });
@@ -237,7 +236,6 @@ function calculateDebts() {
 // 用 ID 查名字的小幫手
 function getMemberName(id) {
     if (!window.dbMembers) return id;
-    // 注意：資料庫 ID 是數字，但 JSON key 可能是字串，用 == 比較寬鬆
     const m = window.dbMembers.find(x => x.id == id);
     return m ? m.name : "未知成員";
 }
@@ -257,7 +255,7 @@ function renderBalanceTab() {
             const fromName = getMemberName(d.from);
             const toName = getMemberName(d.to);
 
-            // ★★★ 核心邏輯：計算這個債務組合 (A -> B) 已經還了多少錢 ★★★
+            // 計算這個債務組合 (A -> B) 已經還了多少錢
             // 篩選條件：還款人是 A (d.from) 且 收款人是 B (d.to)
             const paidAmount = settlements
                 .filter(s => s.payerId == d.from && s.payeeId == d.to)
@@ -305,8 +303,7 @@ function renderBalanceTab() {
         }).join('');
     }
 
-    // (下方顯示詳細還款紀錄的區塊，如果您想保留可以留著，不想要也可以隱藏)
-    // 建議保留，這樣可以查閱每一筆還款的時間點
+    // 顯示詳細還款紀錄的區塊，可以查閱每一筆還款的時間點
     if (settlements.length === 0) {
         settledContainer.innerHTML = '<div style="text-align:center; color:#ccc; font-size:13px;">尚無還款紀錄</div>';
     } else {
@@ -366,7 +363,7 @@ function confirmSettle() {
         .then(data => {
             if (data.success) {
                 closeModal('settleModal');
-                location.reload(); // 重新整理後，renderBalanceTab 就會抓到新的還款紀錄並變更顯示狀態
+                location.reload();
             } else {
                 alert("還款失敗：" + data.message);
             }
@@ -385,7 +382,7 @@ function confirmUndoSettle() {
     // 防呆檢查
     if (!appState.pendingUndoId) return;
 
-    // ★★★ 修正重點：改成呼叫後端 API 刪除資料庫紀錄 ★★★
+    // 呼叫後端 API 刪除資料庫紀錄
     fetch('/Home/DeleteSettlement?id=' + appState.pendingUndoId, {
         method: 'POST'
     })
@@ -410,38 +407,6 @@ function updateTotalHeader() {
     const total = appState.expenses.filter(ex => ex.cat !== '轉帳/結清').reduce((sum, item) => sum + item.total, 0);
     document.getElementById('header-total').innerText = total.toLocaleString();
 }
-
-//function deleteExpense(id) {
-//    if (confirm("確定要刪除這筆支出嗎？")) {
-//        appState.expenses = appState.expenses.filter(e => e.id !== id);
-//        renderAll();
-//    }
-//}
-
-//function editExpense(id) {
-//    const item = appState.expenses.find(e => e.id === id);
-//    if (!item) return;
-//    openExpenseModal(true);
-//    appState.editingId = id;
-//    document.getElementById('m-date').value = item.date;
-//    document.getElementById('m-name').value = item.name;
-//    document.getElementById('m-cat').value = item.cat;
-//    document.querySelectorAll('.pay-amt').forEach(input => {
-//        const user = input.dataset.user;
-//        const amt = item.payer[user] || 0;
-//        input.value = amt > 0 ? amt : '';
-//        input.closest('.checkbox-row').querySelector('.pay-check').checked = (amt > 0);
-//    });
-//    updatePayTotal();
-//    changeSplitMode('custom');
-//    document.querySelectorAll('.part-amt').forEach(input => {
-//        const user = input.dataset.user;
-//        const amt = item.parts[user] || 0;
-//        input.value = amt;
-//        input.closest('.checkbox-row').querySelector('.part-check').checked = (amt > 0);
-//    });
-//    updateSplitTotal();
-//}
 
 // 1. 刪除功能 (連接資料庫)
 function deleteExpense(id) {
@@ -494,7 +459,7 @@ function saveExpense() {
     // 寬容度設為 5 元，避免小數點誤差
     if (Math.abs(totalPay - totalSplit) > 5) { alert('付款總額與分攤總額不符！'); return; }
 
-    // ★★★ 3. 補上這段：收集付款人資料 (payers) ★★★
+    // 收集付款人資料 (payers)
     let payers = {};
     document.querySelectorAll('.pay-amt').forEach(input => {
         const val = Number(input.value);
@@ -504,7 +469,7 @@ function saveExpense() {
         }
     });
 
-    // ★★★ 4. 補上這段：收集分攤人資料 (parts) ★★★
+    // 收集分攤人資料 (parts)
     let parts = {};
     document.querySelectorAll('.part-amt').forEach(input => {
         const val = Number(input.value);
@@ -563,7 +528,7 @@ function openExpenseModal(isEdit = false) {
         document.getElementById('modal-submit-btn').innerText = "確認新增";
         appState.editingId = null;
 
-        // ★★★ 智慧判斷預設日期 ★★★
+        // 智慧判斷預設日期
         const today = new Date().toISOString().split('T')[0];
         const range = window.tripRange; // 取得剛剛從 C# 傳來的範圍
 
@@ -583,28 +548,6 @@ function closeModal(modalId) {
     modal.classList.remove('show');
     setTimeout(() => modal.style.display = 'none', 300);
 }
-
-//function renderAddForm() {
-//    const payerList = document.getElementById('m-payer-list');
-//    payerList.innerHTML = appState.members.map(m => `
-//                <div class="checkbox-row">
-//                    <input type="checkbox" class="pay-check" value="${m}" onchange="updatePayTotal()">
-//                    <span>${m}</span>
-//                    <input type="number" class="pay-amt form-control" data-user="${m}" placeholder="金額" style="margin-left:10px;" oninput="updatePayTotal()">
-//                </div>
-//            `).join('');
-//    const splitList = document.getElementById('m-split-list');
-//    splitList.innerHTML = appState.members.map(m => `
-//                <div class="checkbox-row">
-//                    <input type="checkbox" class="part-check" checked value="${m}" onchange="handlePartCheck()">
-//                    <span>${m}</span>
-//                    <input type="number" class="part-amt form-control" data-user="${m}" placeholder="0" style="margin-left:10px;" disabled oninput="updateSplitTotal()">
-//                </div>
-//            `).join('');
-//    document.getElementById('m-name').value = '';
-//    document.getElementById('pay-total-val').innerText = '0';
-//    document.getElementById('split-total-val').innerText = '0';
-//}
 
 // 讀取資料庫傳來的成員
 function renderAddForm() {
@@ -690,14 +633,6 @@ function updateSplitTotal() {
     });
     document.getElementById('split-total-val').innerText = total;
 }
-
-//function editMyBudget() {
-//    const newB = prompt("請輸入新的預算金額：", appState.budget);
-//    if (newB && !isNaN(newB)) {
-//        appState.budget = Number(newB);
-//        renderPersonalTab();
-//    }
-//}
 
 function editMyBudget() {
     // 1. 跳出輸入框

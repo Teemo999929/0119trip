@@ -267,7 +267,7 @@
     </div>
     <script>
     // 1. 成員資料
-    window.dbMembers = @Html.Raw(Json.Serialize(Model.TripMembers.Select(m => new { 
+    window.dbMembers = @Html.Raw(Json.Serialize((Model.TripMembers ?? Enumerable.Empty<_0119trip.Models.TripMember>()).Select(m => new { 
         id = m.Id, 
         // 邏輯：優先抓 FullName，如果沒有就抓 UserName，再沒有就顯示 "未知"
         name = m.User?.FullName ?? m.User?.UserName ?? "未知成員" 
