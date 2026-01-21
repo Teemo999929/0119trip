@@ -153,7 +153,6 @@
                 @* 2. 跑迴圈列出每一位成員 *@
                 @foreach (var member in Model.TripMembers)
                 {
-                    // 1. 修正點：使用 .Member (關聯物件) 而不是 .UserId
                     var name = member.User?.FullName ?? "未知";
 
                     // 2. 取頭像字首
@@ -168,9 +167,14 @@
             }
 
         </div>
-        <div class="trip-total">
+        @* <div class="trip-total">
             <span>旅程總支出</span>
             <strong>NT$ <span id="header-total">0</span></strong>
+        </div> *@
+        <div class="trip-total">
+            <span>旅程總支出</span>
+            @* 使用 Linq 的 Sum() 方法計算總金額，並用 N0 格式化 (例如 1,234) *@
+            <strong>NT$ <span id="header-total">@Model.Expenses.Sum(e => e.Amount).ToString("N0")</span></strong>
         </div>
     </div>
 
