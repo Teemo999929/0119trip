@@ -297,20 +297,42 @@ function openEditModal(id, title, amount, catId, dateStr) {
     if (firstInput) firstInput.value = amount;
 }
 
-// 3. 儲存功能 (連接資料庫)
 function saveExpense() {
+    // 1. 取得基本欄位資料
     const date = document.getElementById('m-date').value;
     const name = document.getElementById('m-name').value;
     const totalPay = Number(document.getElementById('pay-total-val').innerText);
-    const catIndex = document.getElementById('m-cat').selectedIndex + 1; // 假設順序對應 ID
+    const totalSplit = Number(document.getElementById('split-total-val').innerText);
+    const catIndex = document.getElementById('m-cat').value;
 
+    // 2. 基本驗證
     if (!name || totalPay <= 0) { alert('請填寫完整資訊'); return; }
+    // 寬容度設為 5 元，避免小數點誤差
+    if (Math.abs(totalPay - totalSplit) > 5) { alert('付款總額與分攤總額不符！'); return; }
 
-    // 準備要傳給後端的資料
+    // ★★★ 3. 補上這段：收集付款人資料 (payers) ★★★
+    let payers = {};
+    document.querySelectorAll('.pay-amt').forEach(input => {
+        const val = Number(input.value);
+        // 只有金額 > 0 且有被勾選才算
+        if (val > 0 && input.closest('.checkbox-row').querySelector('.pay-check').checked) {
+            payers[input.dataset.user] = val;
+        }
+    });
+
+    // ★★★ 4. 補上這段：收集分攤人資料 (parts) ★★★
+    let parts = {};
+    document.querySelectorAll('.part-amt').forEach(input => {
+        const val = Number(input.value);
+        if (val > 0 && input.closest('.checkbox-row').querySelector('.part-check').checked) {
+            parts[input.dataset.user] = val;
+        }
+    });
+
+    // 5. 準備傳送給後端的資料
     const formData = new FormData();
-    if (appState.editingId) formData.append('id', appState.editingId); // 如果是編輯，帶上 ID
+    if (appState.editingId) formData.append('id', appState.editingId);
 
-    // ★★★ 注意：這裡需要 TripId，我們通常從網址列抓 (例如 ?id=1)
     const urlParams = new URLSearchParams(window.location.search);
     const currentTripId = urlParams.get('id');
     formData.append('tripId', currentTripId);
@@ -320,10 +342,11 @@ function saveExpense() {
     formData.append('date', date);
     formData.append('categoryId', catIndex);
 
+    // ★★★ 現在這裡不會報錯了，因為上面已經定義了 payers 和 parts ★★★
     formData.append('payersJson', JSON.stringify(payers));
     formData.append('partsJson', JSON.stringify(parts));
 
-    // 發送請求
+    // 6. 發送請求
     fetch('/Home/SaveExpense', {
         method: 'POST',
         body: formData
@@ -332,10 +355,14 @@ function saveExpense() {
         .then(data => {
             if (data.success) {
                 closeModal('expenseModal');
-                location.reload(); // 儲存成功，重新整理
+                location.reload();
             } else {
                 alert("儲存失敗：" + data.message);
             }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("系統發生錯誤");
         });
 }
 
@@ -488,48 +515,48 @@ function editMyBudget() {
     }
 }
 
-function saveExpense() {
-    const date = document.getElementById('m-date').value;
-    const name = document.getElementById('m-name').value;
-    const totalPay = Number(document.getElementById('pay-total-val').innerText);
-    const totalSplit = Number(document.getElementById('split-total-val').innerText);
-    if (!name || totalPay <= 0) { alert('請填寫完整資訊'); return; }
-    if (Math.abs(totalPay - totalSplit) > 5) { alert('付款總額與分攤總額不符！'); return; }
+//function saveExpense() {
+//    const date = document.getElementById('m-date').value;
+//    const name = document.getElementById('m-name').value;
+//    const totalPay = Number(document.getElementById('pay-total-val').innerText);
+//    const totalSplit = Number(document.getElementById('split-total-val').innerText);
+//    if (!name || totalPay <= 0) { alert('請填寫完整資訊'); return; }
+//    if (Math.abs(totalPay - totalSplit) > 5) { alert('付款總額與分攤總額不符！'); return; }
 
-    let payers = {};
-    document.querySelectorAll('.pay-amt').forEach(input => {
-        const val = Number(input.value);
-        if (val > 0 && input.closest('.checkbox-row').querySelector('.pay-check').checked) {
-            payers[input.dataset.user] = val;
-        }
-    });
+//    let payers = {};
+//    document.querySelectorAll('.pay-amt').forEach(input => {
+//        const val = Number(input.value);
+//        if (val > 0 && input.closest('.checkbox-row').querySelector('.pay-check').checked) {
+//            payers[input.dataset.user] = val;
+//        }
+//    });
 
-    let parts = {};
-    document.querySelectorAll('.part-amt').forEach(input => {
-        const val = Number(input.value);
-        if (val > 0 && input.closest('.checkbox-row').querySelector('.part-check').checked) {
-            parts[input.dataset.user] = val;
-        }
-    });
+//    let parts = {};
+//    document.querySelectorAll('.part-amt').forEach(input => {
+//        const val = Number(input.value);
+//        if (val > 0 && input.closest('.checkbox-row').querySelector('.part-check').checked) {
+//            parts[input.dataset.user] = val;
+//        }
+//    });
 
-    const newExpense = {
-        id: appState.editingId ? appState.editingId : Date.now(),
-        date: date,
-        name: name,
-        cat: document.getElementById('m-cat').value,
-        total: totalPay,
-        payer: payers,
-        parts: parts
-    };
+//    const newExpense = {
+//        id: appState.editingId ? appState.editingId : Date.now(),
+//        date: date,
+//        name: name,
+//        cat: document.getElementById('m-cat').value,
+//        total: totalPay,
+//        payer: payers,
+//        parts: parts
+//    };
 
-    if (appState.editingId) {
-        const idx = appState.expenses.findIndex(e => e.id === appState.editingId);
-        if (idx !== -1) appState.expenses[idx] = newExpense;
-    } else {
-        appState.expenses.push(newExpense);
-    }
+//    if (appState.editingId) {
+//        const idx = appState.expenses.findIndex(e => e.id === appState.editingId);
+//        if (idx !== -1) appState.expenses[idx] = newExpense;
+//    } else {
+//        appState.expenses.push(newExpense);
+//    }
 
-    closeModal('expenseModal');
-    renderAll();
-    switchTab('group');
-}
+//    closeModal('expenseModal');
+//    renderAll();
+//    switchTab('group');
+//}

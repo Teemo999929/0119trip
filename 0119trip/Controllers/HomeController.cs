@@ -73,13 +73,17 @@ public class HomeController : Controller
 
     // --- 處理 建立 或 編輯 支出 ---
     [HttpPost]
-    public async Task<IActionResult> SaveExpense(int? id, int tripId, string title, decimal amount, DateTime date, int categoryId, string payersJson, string partsJson)
+    public async Task<IActionResult> SaveExpense(int? id, int tripId, string title, decimal amount, DateTime date, int? categoryId, string payersJson, string partsJson)
     {
-        // 開啟交易模式
+        // 改為 int? categoryId，允許類別為空
+
         using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
-            // 1. 驗證旅程
+            // 1. 基本檢查
+            if (string.IsNullOrEmpty(payersJson) || string.IsNullOrEmpty(partsJson))
+                return Json(new { success = false, message = "付款人或分攤人資料遺失" });
+
             var trip = await _context.Trips.FindAsync(tripId);
             if (trip == null) return Json(new { success = false, message = "旅程不存在" });
 
@@ -92,35 +96,40 @@ public class HomeController : Controller
             // 3. 處理 Expense 主表
             if (id.HasValue && id.Value > 0)
             {
-                // 編輯模式
                 expense = await _context.Expenses
                     .Include(e => e.ExpensePayers)
                     .Include(e => e.ExpenseParticipants)
-                    .FirstOrDefaultAsync(e => e.ExpenseId == id.Value); // 注意：您的主鍵是 ExpenseId
+                    .FirstOrDefaultAsync(e => e.ExpenseId == id.Value);
 
                 if (expense == null) return Json(new { success = false, message = "找無此支出" });
 
-                // 刪除舊紀錄 (重鋪)
                 _context.ExpensePayers.RemoveRange(expense.ExpensePayers);
                 _context.ExpenseParticipants.RemoveRange(expense.ExpenseParticipants);
             }
             else
             {
-                // 新增模式
                 expense = new Expense();
                 expense.TripId = tripId;
                 _context.Expenses.Add(expense);
             }
 
-            // 更新欄位
             expense.Title = title;
             expense.Amount = amount;
             expense.Day = dayNumber;
-            expense.CategoryId = categoryId;
 
-            await _context.SaveChangesAsync(); // 先存檔取得 ID
+            // ★★★ 安全修正：檢查類別是否存在，不存在就存 null ★★★
+            if (categoryId.HasValue && await _context.Categories.AnyAsync(c => c.CategoryId == categoryId.Value))
+            {
+                expense.CategoryId = categoryId.Value;
+            }
+            else
+            {
+                expense.CategoryId = null; // 避免 FK 錯誤
+            }
 
-            // 4. 處理付款人 (Payers)
+            await _context.SaveChangesAsync();
+
+            // 4. 處理付款人
             var payersDict = JsonSerializer.Deserialize<Dictionary<string, decimal>>(payersJson);
             if (payersDict != null)
             {
@@ -130,15 +139,15 @@ public class HomeController : Controller
                     {
                         _context.ExpensePayers.Add(new ExpensePayer
                         {
-                            ExpenseId = expense.ExpenseId, // 使用 ExpenseId
-                            MemberId = memberId,           // [修正] 模型裡叫 MemberId
+                            ExpenseId = expense.ExpenseId,
+                            MemberId = memberId,
                             Amount = kvp.Value
                         });
                     }
                 }
             }
 
-            // 5. 處理分攤人 (Participants)
+            // 5. 處理分攤人
             var partsDict = JsonSerializer.Deserialize<Dictionary<string, decimal>>(partsJson);
             if (partsDict != null)
             {
@@ -148,11 +157,10 @@ public class HomeController : Controller
                     {
                         _context.ExpenseParticipants.Add(new ExpenseParticipant
                         {
-                            ExpenseId = expense.ExpenseId, // 使用 ExpenseId
-                            TripId = tripId,               // [修正] 必須補上 TripId
-                            UserId = memberId,             // [修正] 模型裡這欄位叫 UserId (對應 TripMember ID)
-                            ShareAmount = kvp.Value        // [修正] 模型裡叫 ShareAmount，不是 Amount
-                                                           // 注意：您的模型中沒有 HasPaid 欄位，所以我移除了
+                            ExpenseId = expense.ExpenseId,
+                            TripId = tripId,
+                            UserId = memberId, // 對應 TripMember FK
+                            ShareAmount = kvp.Value
                         });
                     }
                 }
@@ -166,7 +174,8 @@ public class HomeController : Controller
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
-            return Json(new { success = false, message = "存檔失敗：" + ex.Message });
+            // ★★★ 把真實錯誤訊息傳回前端，方便除錯 ★★★
+            return Json(new { success = false, message = "存檔失敗：" + ex.Message + (ex.InnerException != null ? " | " + ex.InnerException.Message : "") });
         }
     }
 
