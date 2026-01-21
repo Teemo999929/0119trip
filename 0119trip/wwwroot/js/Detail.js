@@ -320,6 +320,9 @@ function saveExpense() {
     formData.append('date', date);
     formData.append('categoryId', catIndex);
 
+    formData.append('payersJson', JSON.stringify(payers));
+    formData.append('partsJson', JSON.stringify(parts));
+
     // 發送請求
     fetch('/Home/SaveExpense', {
         method: 'POST',
